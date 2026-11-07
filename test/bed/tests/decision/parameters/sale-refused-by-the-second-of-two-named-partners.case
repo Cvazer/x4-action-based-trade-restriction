@@ -1,0 +1,7 @@
+# a sale to the second partner a refuse set names is refused
+operation: sell
+own: allow
+partner: pioneer
+sell: on refuse terran,pioneer
+buy: off
+expect: deny

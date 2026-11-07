@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  release:
+    # The artefact holds a DLL compiled with MSVC, so the run needs a Windows toolchain.
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The C++ project compiles against the X4Native SDK at `X4Native/sdk`, unpacked from an X4Native
+      # release's `x4native-sdk-<tag>.zip`, the form the SDK is distributed in. Every such zip holds
+      # one `x4native-sdk/` folder, so the release is chosen by its URL alone.
+      - name: Fetch the X4Native SDK
+        shell: pwsh
+        env:
+          X4NATIVE_SDK_URL: https://github.com/Cvazer/X4Native/releases/download/v9.0.0-611726-cvazer.1/x4native-sdk-v9.0.0-611726-cvazer.1.zip
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "x4native-sdk.zip"
+          $out = Join-Path $env:RUNNER_TEMP "x4native-sdk"
+          Invoke-WebRequest -Uri $env:X4NATIVE_SDK_URL -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $out
+          New-Item -ItemType Directory -Force -Path X4Native | Out-Null
+          Move-Item -Path (Join-Path $out "x4native-sdk") -Destination X4Native/sdk
+          if (-not (Test-Path X4Native/sdk/x4native.h)) { throw "the X4Native SDK has no x4native.h" }
+
+      # The trigger above is a glob. The exact grammar is X.Y.Z with an optional suffix that
+      # contains no whitespace.
+      - name: Check tag grammar
+        shell: bash
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[^[:space:]]+)?$ ]]; then
+            echo "tag '${GITHUB_REF_NAME}' is not X.Y.Z with an optional suffix containing no spaces"
+            exit 1
+          fi
+
+      - name: Check the tag matches versions.yaml
+        shell: bash
+        run: |
+          declared=$(sed -n 's/^mod:[[:space:]]*//p' versions.yaml)
+          if [[ "${declared}" != "${GITHUB_REF_NAME}" ]]; then
+            echo "tag '${GITHUB_REF_NAME}' does not match versions.yaml mod '${declared}'"
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - uses: extractions/setup-just@v2
+
+      - name: Install the build's Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build
+        run: just build
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          # A tag carrying a suffix, such as 1.0.0-RC1, is published as a pre-release.
+          prerelease=""
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            prerelease="--prerelease"
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist/action-based-trade-restriction.zip" \
+            --title "Action Based Trade Restriction ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            $prerelease

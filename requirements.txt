@@ -1,0 +1,18 @@
+# Tooling required to build and test the extension. Not needed to run the mod itself.
+#
+# x4cat reads the game's .cat/.dat archives and validates mod scripts and diff patches against the
+# installed game. It is not published on PyPI, so it is installed from its repository at a pinned tag.
+#
+# rust-just carries the just command runner itself, as a platform-specific wheel: installing this
+# file puts a working `just` binary in the venv on every OS pip supports, matching the Justfile at
+# the repo root. Nothing else has to be on PATH.
+#
+#   python -m venv .venv
+#   .venv/Scripts/pip install -r requirements.txt      (Windows)
+#   .venv/bin/pip install -r requirements.txt          (Linux, macOS)
+
+x4cat @ git+https://github.com/meethune/x4cat@v1.2.6
+lxml>=5.0
+rust-just==1.58.0
+PyYAML>=6.0
+Jinja2>=3.1

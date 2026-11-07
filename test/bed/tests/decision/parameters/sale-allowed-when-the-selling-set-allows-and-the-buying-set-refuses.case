@@ -1,0 +1,7 @@
+# a buying restriction that refuses the partner does not govern a sale the seller allows
+operation: sell
+own: allow
+partner: terran
+sell: on allow terran
+buy: on refuse terran
+expect: allow

@@ -1,0 +1,16 @@
+# The extension's identity. Hand-authored, and read by the build.
+
+# The id the game knows the extension by, and the name and blurb it shows.
+id: action_based_trade_restriction
+name: Action Based Trade Restriction
+description: >-
+  Lets a trade list restrict selling and buying separately. The list keeps its default faction set,
+  applied to every trade, and gains an optional sell set and an optional buy set, each with its own
+  black or white switch.
+author: Cvazer
+
+# The folder name the extension is installed under.
+folder: action_based_trade_restriction
+
+# The basename of the distributable zip.
+archive: action-based-trade-restriction

@@ -1,0 +1,7 @@
+# a restriction naming a refused partner does not admit it
+operation: sell
+own: deny
+partner: pioneer
+sell: on allow pioneer
+buy: off
+expect: deny

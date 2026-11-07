@@ -1,0 +1,7 @@
+# a refuse set switched on with no factions refuses nobody
+operation: buy
+own: allow
+partner: terran
+sell: off
+buy: on refuse
+expect: allow

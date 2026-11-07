@@ -1,0 +1,7 @@
+# a purchase from a partner an allow-only set names is allowed
+operation: buy
+own: allow
+partner: pioneer
+sell: off
+buy: on allow pioneer
+expect: allow

@@ -1,0 +1,7 @@
+# an unestablished check with no restriction set allows
+operation: unknown
+own: allow
+partner: pioneer
+sell: off
+buy: off
+expect: allow

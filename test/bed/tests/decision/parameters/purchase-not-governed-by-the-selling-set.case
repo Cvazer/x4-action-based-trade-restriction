@@ -1,0 +1,7 @@
+# a selling restriction does not govern a purchase
+operation: buy
+own: allow
+partner: terran
+sell: on refuse terran
+buy: off
+expect: allow

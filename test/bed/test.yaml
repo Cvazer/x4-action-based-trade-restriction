@@ -1,0 +1,3 @@
+id: bed
+description: The decision cases, the engine scenarios and the editor checks are green against the mod's own sources.
+command: python check.py

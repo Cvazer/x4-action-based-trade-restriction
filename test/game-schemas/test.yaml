@@ -1,0 +1,3 @@
+id: game-schemas
+description: The mission director script and the AI scripts validate against the schemas the installed game ships.
+command: python check.py

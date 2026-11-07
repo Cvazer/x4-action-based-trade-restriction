@@ -1,0 +1,7 @@
+# an allow-only set switched off refuses nobody
+operation: sell
+own: allow
+partner: terran
+sell: off
+buy: off
+expect: allow

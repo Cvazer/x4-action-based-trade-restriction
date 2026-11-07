@@ -1,0 +1,3 @@
+id: xml-well-formed
+description: Every XML file the extension ships parses.
+command: python check.py

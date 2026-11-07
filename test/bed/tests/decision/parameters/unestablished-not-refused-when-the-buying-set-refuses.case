@@ -1,0 +1,7 @@
+# an unestablished check is not refused when only the buying restriction refuses
+operation: unknown
+own: allow
+partner: terran
+sell: off
+buy: on refuse terran
+expect: allow

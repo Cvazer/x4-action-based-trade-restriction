@@ -1,0 +1,7 @@
+# both empty restrictions change nothing on an unestablished check
+operation: unknown
+own: allow
+partner: terran
+sell: on allow
+buy: on refuse
+expect: allow

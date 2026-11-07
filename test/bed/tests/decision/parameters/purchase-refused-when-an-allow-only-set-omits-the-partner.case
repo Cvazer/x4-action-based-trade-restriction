@@ -1,0 +1,7 @@
+# a purchase from a partner an allow-only set does not name is refused
+operation: buy
+own: allow
+partner: terran
+sell: off
+buy: on allow pioneer
+expect: deny

@@ -1,0 +1,7 @@
+# an enabled empty allow-only buying restriction changes no purchase
+operation: buy
+own: allow
+partner: terran
+sell: off
+buy: on allow
+expect: allow

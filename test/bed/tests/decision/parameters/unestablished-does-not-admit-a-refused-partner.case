@@ -1,0 +1,7 @@
+# an unestablished check does not admit a refused partner
+operation: unknown
+own: deny
+partner: pioneer
+sell: on allow pioneer
+buy: on allow pioneer
+expect: deny

@@ -1,0 +1,15 @@
+.vscode/
+
+# Build outputs
+dist/
+src/dll/build/
+test/bed/build/
+__pycache__/
+
+# Local tooling and caches
+.venv/
+.schemas/
+.tools/
+
+# Local environment (see .env.example)
+.env
