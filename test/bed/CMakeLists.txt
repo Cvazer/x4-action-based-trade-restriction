@@ -27,6 +27,7 @@ FetchContent_MakeAvailable(json)
 
 # The mod's sources the tests compile: the decision alone, and every unit of the DLL.
 set(DECISION_SOURCE "${PROJECT_ROOT}/src/dll/domain/verdict.cpp")
+
 file(GLOB DLL_SOURCES CONFIGURE_DEPENDS
     "${PROJECT_ROOT}/src/dll/*.cpp"
     "${PROJECT_ROOT}/src/dll/*/*.cpp"
@@ -53,7 +54,9 @@ file(GLOB ENGINE_TESTS CONFIGURE_DEPENDS
 list(FILTER ENGINE_TESTS EXCLUDE REGEX "/tests/decision/")
 
 # X4Native's save XML name registry, which the fake engine runs as the framework does.
-set(X4NATIVE_CORE_SOURCES "${PROJECT_ROOT}/X4Native/src/core/save_xml.cpp")
+set(X4NATIVE_CORE_SOURCES
+    "${PROJECT_ROOT}/X4Native/src/core/save_xml.cpp"
+    "${PROJECT_ROOT}/X4Native/src/core/save_xml_node.cpp")
 
 add_executable(integration
     runner.cpp
@@ -69,7 +72,8 @@ target_include_directories(integration PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/harness
     ${PROJECT_ROOT}/src/dll
     ${PROJECT_ROOT}/X4Native/sdk
-    ${PROJECT_ROOT}/X4Native/src/core)
+    ${PROJECT_ROOT}/X4Native/src/core
+    ${PROJECT_ROOT}/X4Native/src/common)
 
 # The editor's Lua runs on the game's own LuaJIT: the bed cannot drive the UI, but it can execute the
 # script against a fake surface and refuse one built wrong.

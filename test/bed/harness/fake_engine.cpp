@@ -1,6 +1,7 @@
 #include "fake_engine.h"
 
 #include <save_xml.h>
+#include <save_xml_node.h>
 #include <x4native.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -66,7 +67,7 @@ const char* game_format_xml_name(const int32_t* id) {
     return "";
 }
 
-int32_t game_lookup_name(const char* name, const void*) {
+int32_t game_lookup_name(const char* name, const std::string*) {
     const auto count = at<std::size_t>(g_savexml_namespace.data(), X4_SAVEXML_OFFSET_ENTRY_COUNT);
     for (std::size_t i = 0; i < count; ++i) {
         const std::uint8_t* entry = g_savexml_namespace.data() + X4_SAVEXML_OFFSET_ENTRIES + i * X4_SAVEXML_ENTRY_SIZE;
@@ -77,10 +78,20 @@ int32_t game_lookup_name(const char* name, const void*) {
 }
 
 // X4Native's core answers a registration from its shared table against the game's namespace.
-int32_t on_savexml_register(const char* name) {
+int32_t on_savexml_register(const char* local_name, void* api_ptr, const char** out_name) {
+    auto* api = static_cast<X4NativeAPI*>(api_ptr);
+    const char* ext_id = api && api->_ext_id ? api->_ext_id : "";
     const void* ns = g.savexml_namespace_ready ? g_savexml_namespace.data() : nullptr;
-    return x4n::SaveXml::register_name(ns, name);
+    return x4n::SaveXml::register_name(ns, ext_id, local_name, out_name);
 }
+
+int32_t on_savexml_lookup(const char* game_name) {
+    const void* ns = g.savexml_namespace_ready ? g_savexml_namespace.data() : nullptr;
+    return x4n::SaveXml::game_number(ns, game_name);
+}
+
+// The core's log sink, into the bed's log.
+void on_savexml_log(const char* line) { g.log.push_back(LogLine{0, line ? line : ""}); }
 
 int on_raise_lua(const char* name, const char* param) {
     g.lua.push_back(LuaCall{name ? name : "", param ? param : ""});
@@ -171,12 +182,36 @@ void* on_ensure_detour(const char* name, void* detour) {
 void on_run_before(X4HookContext* context) { run_before(context->function_name, *context); }
 void on_run_after(X4HookContext* context) { run_after(context->function_name, *context); }
 
+int on_stash_set(const char* ns, const char* key, const void* data, uint32_t size) {
+    const auto* bytes = static_cast<const std::uint8_t*>(data);
+    g.stash[ns][key].assign(bytes, bytes + size);
+    return 1;
+}
+
+const void* on_stash_get(const char* ns, const char* key, uint32_t* out_size) {
+    const auto space = g.stash.find(ns);
+    if (space == g.stash.end()) return nullptr;
+    const auto found = space->second.find(key);
+    if (found == space->second.end()) return nullptr;
+    if (out_size) *out_size = static_cast<uint32_t>(found->second.size());
+    return found->second.data();
+}
+
+int on_stash_remove(const char* ns, const char* key) {
+    const auto space = g.stash.find(ns);
+    return space != g.stash.end() && space->second.erase(key) ? 1 : 0;
+}
+
+void on_stash_clear(const char* ns) { g.stash.erase(ns); }
+
 void* on_get_function(const char*) { return nullptr; }
 void* on_resolve_internal(const char*) { return nullptr; }
 
 // --- The game's own functions ---------------------------------------------------------------
 
 int game_type_from_name(void*, const void*) { return g.list_type_from_name; }
+
+UniverseID game_player_id() { return g.player_id; }
 
 void* game_record_by_id(void*, int id) {
     if (id <= 0 || static_cast<std::size_t>(id) > g.records.size()) return nullptr;
@@ -294,10 +329,13 @@ void boot(const std::string& folder_path) {
     g.offsets.blacklist_registry = &g_registry_slot;
     g.offsets.order_id_map = &g_order_id_map_slot;
     g.offsets.controllable_order_queue = 0x4B0;
-    g.offsets.controllable_order_default = 0x500;
+    g.offsets.controllable_order_default = 0x4F8;
+    g.offsets.controllable_order_planned_default = 0x500;
     g.offsets.controllable_order_current_index = 0x4E0;
     g.offsets.order_definition = 0x10;
-    g.offsets.order_param_values = 0x58;
+    g.offsets.order_params = 0x58;
+    g.offsets.order_trade = 0x60;
+    g.offsets.order_state = 0x20;
     g.offsets.trade_seller = 0x10;
     g.offsets.trade_buyer = 0x18;
     g.offsets.vtable_get_faction_id = 0;
@@ -305,22 +343,8 @@ void boot(const std::string& folder_path) {
     g.offsets.vtable_is_derived_class = 2;
     g.offsets.component_registry = &g_component_registry;
     g.offsets.script_action_command_id = 0x08;
-    g.offsets.xml_node_size = 0xF8;
-    g.offsets.xml_node_element = 0x0C;
-    g.offsets.xml_node_attributes = 0x18;
-    g.offsets.xml_node_children = 0xC8;
-    g.offsets.xml_node_flags = 0x00;
-    g.offsets.xml_node_source_line = 0x02;
-    g.offsets.xml_node_source_column = 0x04;
-    g.offsets.xml_node_prefix = 0x08;
-    g.offsets.xml_node_text = 0x10;
-    g.offsets.xml_node_attribute_capacity = 0xB8;
-    g.offsets.xml_node_attribute_count = 0xC0;
-    g.offsets.xml_node_child_capacity = 0xE8;
-    g.offsets.xml_node_child_count = 0xF0;
-    g.offsets.xml_attribute_size = 0x28;
-    g.offsets.xml_attribute_id = 0x00;
-    g.offsets.xml_attribute_value = 0x08;
+    g.offsets.script_command_find_sell_offer = kFindSellOffer;
+    g.offsets.script_command_find_buy_offer = kFindBuyOffer;
 
     g.game.BlacklistTypeFromName = &game_type_from_name;
     g.game.BlacklistRecordById = &game_record_by_id;
@@ -328,6 +352,7 @@ void boot(const std::string& folder_path) {
     g.game.BlacklistFetchForControllable = &game_fetch;
     g.game.FindOfferAction = &game_find_offer;
     g.game.GameAlloc = &game_alloc;
+    g.game.GetPlayerID = &game_player_id;
     g.game.XmlNode_SetAttribute = &game_set_attribute;
     g.game.XmlNodeVector_PushBack = &game_push_back;
     g.game.BlacklistData_Export = &original_list_export;
@@ -348,11 +373,16 @@ void boot(const std::string& folder_path) {
 
     g_savexml_namespace.assign(X4_SAVEXML_OFFSET_ENTRY_COUNT + sizeof(std::size_t), 0);
     x4n::SaveXml::attach(&game_format_xml_name, &game_lookup_name);  // as the core does once both are hooked
+    x4n::SaveXml::set_log(&on_savexml_log);
+    x4n::SaveXmlNode::attach(&g.game, &on_savexml_log);
     g_savexml_names.clear();
     g_savexml_names.reserve(256);
     add_game_save_name("blacklist", kSaveBlacklist);
     add_game_save_name("factions", kSaveFactions);
     add_game_save_name("id", kSaveId);
+    add_game_save_name("key", 0x230);
+    add_game_save_name("type", 0x4D9);
+    add_game_save_name("value", 0x4FA);
 
     g.api.api_version = X4NATIVE_API_VERSION;
     g.api.subscribe = &on_subscribe;
@@ -372,12 +402,33 @@ void boot(const std::string& folder_path) {
     g.api.unhook = &on_unhook;
     g.api._ensure_detour = &on_ensure_detour;
     g.api.savexml_register = &on_savexml_register;
+    g.api.savexml_lookup = &on_savexml_lookup;
+    g.api.savexml_create_node = [](int32_t element) { return x4n::SaveXmlNode::create(element); };
+    g.api.savexml_set_attribute = [](void* node, int32_t attribute, const char* value, void* api_ptr) {
+        const auto* api = static_cast<X4NativeAPI*>(api_ptr);
+        return x4n::SaveXmlNode::set_attribute(node, attribute, value, api ? api->_ext_id : nullptr) ? 1 : 0;
+    };
+    g.api.savexml_append_child = [](void* parent, void* child) {
+        return x4n::SaveXmlNode::append_child(parent, child) ? 1 : 0;
+    };
+    g.api.savexml_get_attribute = [](const void* node, int32_t attribute) {
+        return x4n::SaveXmlNode::get_attribute(node, attribute);
+    };
+    g.api.savexml_node_element = [](const void* node) { return x4n::SaveXmlNode::element(node); };
+    g.api.savexml_node_children = [](const void* node, void** out, size_t capacity) {
+        return x4n::SaveXmlNode::children(node, out, capacity);
+    };
+    g.api.stash_set = &on_stash_set;
+    g.api.stash_get = &on_stash_get;
+    g.api.stash_remove = &on_stash_remove;
+    g.api.stash_clear = &on_stash_clear;
     g.api._run_before_hooks = &on_run_before;
     g.api._run_after_hooks = &on_run_after;
     g.api.resolve_internal = &on_resolve_internal;
     g.api.offsets = &g.offsets;
     g.api._ext_id = "action_based_trade_restriction";
     g.api._ext_display_name = "Action Based Trade Restriction";
+
 }
 
 void run_before(const char* function, X4HookContext& context) {
@@ -652,12 +703,11 @@ void* make_trade(void* seller, void* buyer, std::uint64_t handle) {
     return trade;
 }
 
-void* make_order(std::uint64_t handle) {
+void* make_order(std::uint64_t handle, std::int32_t state) {
     void* order = new std::uint8_t[0x80]();
     at<void*>(order, g.offsets.order_definition) = reinterpret_cast<void*>(1);
-    // A script value is 16 order in parameter order and its payload is at +8; the first parameter of a
-    // trade order is the trade handle.
-    at<std::uint64_t>(order, g.offsets.order_param_values + 8) = handle;
+    at<std::int32_t>(order, g.offsets.order_state) = state;
+    at<std::uint64_t>(order, g.offsets.order_trade) = handle;
     return order;
 }
 

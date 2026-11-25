@@ -14,4 +14,6 @@ std::uint64_t faction_owner(const std::string& faction_id) {
     return reinterpret_cast<std::uint64_t>(x4n::faction::find_class_by_id(faction_id.c_str()));
 }
 
+std::uint64_t player_id() { return x4n::game()->GetPlayerID(); }
+
 }  // namespace action_based_trade_restriction::game

@@ -5,9 +5,6 @@
 namespace action_based_trade_restriction::game {
 namespace {
 
-// An order's parameter list stores 16-byte script values in order; each value's payload sits at +0x08.
-constexpr std::size_t kOffsetScriptValuePayload = 0x08;
-
 constexpr int kHandleMaskTrade = 2;
 constexpr int kHandleMaskComponent = 4;
 
@@ -49,7 +46,7 @@ std::optional<Trade> Order::trade() const {
     ) {
         return std::nullopt;
     }
-    const auto handle = field<std::uint64_t>(offsets->order_param_values + kOffsetScriptValuePayload);
+    const auto handle = field<std::uint64_t>(offsets->order_trade);
     void* map = dereference_slot(offsets->order_id_map);
     void* trade = handle && map ? game->AutoIDMap_Lookup(map, handle, kHandleMaskTrade) : nullptr;
     if (!trade) return std::nullopt;

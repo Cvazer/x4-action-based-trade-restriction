@@ -92,6 +92,12 @@ struct Engine {
 
     // How many times the mod has read a partner's owner. The per-check cost of a restriction.
     int owner_reads = 0;
+
+    // The player's UniverseID: the same across a UI reload, new with every loaded world.
+    std::uint64_t player_id = 1;
+
+    // X4Native's stash, by namespace and key. It outlives the extension, as the framework's does.
+    std::map<std::string, std::map<std::string, std::vector<std::uint8_t>>> stash;
 };
 
 Engine& engine();
@@ -146,13 +152,16 @@ void* make_script_action(std::uint32_t command_id);
 bool run_find_offer(void* action, std::function<void()> search);
 
 // The order path: a controllable whose current order carries a trade handle, the trade that handle
-// resolves to, and its seller and buyer. Enough for `seh_operation_from_order` to read.
+// resolves to, and its seller and buyer. Enough for `seh_operation_from_order` to read. An order's
+// `state` is the game's: 4 and above, except 8 (completed), is running.
+constexpr std::int32_t kOrderRunning = 4;
+constexpr std::int32_t kOrderCompleted = 8;
 void* make_trade(void* seller, void* buyer, std::uint64_t handle);
-void* make_order(std::uint64_t handle);
+void* make_order(std::uint64_t handle, std::int32_t state = kOrderRunning);
 void* make_controllable(void* order);
 
-// A ship holding `queue` in its order queue, `current` as the queue index and `standing` as its
-// Default order, which sits outside the queue. It is registered under its UniverseID and reports
+// A ship holding `queue` in its order queue, `current` as the queue index and `standing` as the
+// Default order it runs, which sits outside the queue. It is registered under its UniverseID and reports
 // itself a Ship, so `x4n::ship::Ship` resolves it.
 void* make_controllable(const std::vector<void*>& queue, std::size_t current, void* standing);
 

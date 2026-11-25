@@ -79,9 +79,9 @@ std::expected<ActionRule, const char*> read_side(
 }  // namespace
 
 std::optional<Names> register_names() {
-    const auto blacklist = x4n::savexml::register_tag("blacklist");
-    const auto id = x4n::savexml::register_tag("id");
-    const auto root = x4n::savexml::register_tag("action_based_trade_restriction");
+    const std::int32_t blacklist = x4n::savexml::game_number("blacklist");
+    const std::int32_t id = x4n::savexml::game_number("id");
+    const auto root = x4n::savexml::register_tag("rules");
     const auto sell = x4n::savexml::register_tag("sell");
     const auto buy = x4n::savexml::register_tag("buy");
     const auto enabled = x4n::savexml::register_tag("enabled");
@@ -91,8 +91,8 @@ std::optional<Names> register_names() {
         return std::nullopt;
     }
     return Names{
-        .blacklist = *blacklist,
-        .id = *id,
+        .blacklist = blacklist,
+        .id = id,
         .root = *root,
         .sell = *sell,
         .buy = *buy,
@@ -103,7 +103,7 @@ std::optional<Names> register_names() {
 }
 
 std::int32_t list_id(game::XmlNode list_node, const Names& names) {
-    const auto text = list_node.attribute(names.id.number());
+    const auto text = list_node.attribute(names.id);
     if (!text || text->empty()) return 0;
 
     std::int32_t value = 0;

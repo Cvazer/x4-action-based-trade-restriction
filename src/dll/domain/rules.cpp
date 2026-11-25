@@ -103,4 +103,17 @@ std::string encode_entry(const Rule& rule) {
     }.dump();
 }
 
+std::expected<std::vector<Rule>, const char*> parse_table(std::string_view text) {
+    const json table = json::parse(text, nullptr, false);
+    if (table.is_discarded() || !table.is_array()) return std::unexpected("a table is a JSON array");
+
+    std::vector<Rule> rules;
+    for (const json& entry : table) {
+        auto rule = parse_entry(entry.dump());
+        if (!rule) return std::unexpected(rule.error());
+        rules.push_back(*rule);
+    }
+    return rules;
+}
+
 }  // namespace action_based_trade_restriction

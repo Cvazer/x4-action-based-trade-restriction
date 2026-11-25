@@ -23,4 +23,7 @@ public:
 // or 0 if the faction is unknown.
 std::uint64_t faction_owner(const std::string& faction_id);
 
+// The player's UniverseID. A loaded world gives the player a new one, so it tells one world from the next.
+std::uint64_t player_id();
+
 }  // namespace action_based_trade_restriction::game

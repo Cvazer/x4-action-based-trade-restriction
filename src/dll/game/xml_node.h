@@ -15,7 +15,7 @@ class XmlNode : public Handle {
 public:
     using Handle::Handle;
 
-    // Allocates and initializes a new element node using the engine's own allocator and layout.
+    // A new element node, built by X4Native as the game builds one.
     static std::optional<XmlNode> create(std::int32_t element);
 
     // The node's SaveXML element number, or 0 for text/null nodes.

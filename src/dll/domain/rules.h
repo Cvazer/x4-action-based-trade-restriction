@@ -52,4 +52,7 @@ struct Rule {
 std::expected<Rule, const char*> parse_entry(std::string_view text);
 std::string encode_entry(const Rule& rule);
 
+// Reads back a whole table as `RuleTable::encode` writes it: a JSON array of entries.
+std::expected<std::vector<Rule>, const char*> parse_table(std::string_view text);
+
 }  // namespace action_based_trade_restriction

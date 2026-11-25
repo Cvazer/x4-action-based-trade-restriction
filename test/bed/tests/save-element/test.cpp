@@ -11,6 +11,12 @@
 
 namespace {
 
+constexpr const char* kExtension = "action_based_trade_restriction";
+
+std::string prefixed(const char* local_name) {
+    return std::string(kExtension) + "." + local_name;
+}
+
 // The <blacklist> node the save holds for a list id, or null.
 void* list_node(void* saved, int id) {
     for (void* node : bed::save_children(saved)) {
@@ -30,7 +36,7 @@ void* child(void* node, const char* name) {
 }
 
 std::string attribute(void* node, const char* name) {
-    const std::string* value = node ? bed::save_attribute(node, bed::save_number(name)) : nullptr;
+    const std::string* value = node ? bed::save_attribute(node, bed::save_number(prefixed(name).c_str())) : nullptr;
     return value ? *value : std::string("<none>");
 }
 
@@ -42,10 +48,10 @@ BED_SCENARIO(set_saved_in_its_list) {
     bed::send("1|sell:10:terran|buy:11:argon,terran");
 
     void* saved = bed::save_game();
-    void* element = child(list_node(saved, 1), "action_based_trade_restriction");
+    void* element = child(list_node(saved, 1), prefixed("rules").c_str());
     bed::check("a list with a set on carries the mod's element in its own <blacklist>", element != nullptr);
-    void* sell = child(element, "sell");
-    void* buy = child(element, "buy");
+    void* sell = child(element, prefixed("sell").c_str());
+    void* buy = child(element, prefixed("buy").c_str());
     bed::check("both sides are written", sell && buy);
     bed::check("the selling side is written as set",
                attribute(sell, "enabled") == "1" && attribute(sell, "whitelist") == "0" &&
@@ -65,9 +71,9 @@ BED_SCENARIO(no_set_no_element) {
     void* saved = bed::save_game();
     bed::check("the writer still writes every list", list_node(saved, 1) && list_node(saved, 2));
     bed::check("a list with no set on gets no element",
-               child(list_node(saved, 1), "action_based_trade_restriction") == nullptr);
+               child(list_node(saved, 1), prefixed("rules").c_str()) == nullptr);
     bed::check("a list the table does not name gets no element",
-               child(list_node(saved, 2), "action_based_trade_restriction") == nullptr);
+               child(list_node(saved, 2), prefixed("rules").c_str()) == nullptr);
 }
 
 BED_SCENARIO(load_wraps_by_id) {
@@ -104,11 +110,11 @@ BED_SCENARIO(element_missing_a_part_is_refused) {
     void* saved = bed::make_save_node(0);
     void* list = bed::make_save_node(bed::kSaveBlacklist);
     bed::set_save_attribute(list, bed::kSaveId, "1");
-    void* element = bed::make_save_node(bed::save_number("action_based_trade_restriction"));
-    void* sell = bed::make_save_node(bed::save_number("sell"));
-    bed::set_save_attribute(sell, bed::save_number("enabled"), "1");
-    bed::set_save_attribute(sell, bed::save_number("whitelist"), "0");
-    bed::set_save_attribute(sell, bed::save_number("factions"), "terran");
+    void* element = bed::make_save_node(bed::save_number(prefixed("rules").c_str()));
+    void* sell = bed::make_save_node(bed::save_number(prefixed("sell").c_str()));
+    bed::set_save_attribute(sell, bed::save_number(prefixed("enabled").c_str()), "1");
+    bed::set_save_attribute(sell, bed::save_number(prefixed("whitelist").c_str()), "0");
+    bed::set_save_attribute(sell, bed::save_number(prefixed("factions").c_str()), "terran");
     bed::append_save_child(element, sell);
     bed::append_save_child(list, element);
     bed::append_save_child(saved, list);
@@ -118,14 +124,14 @@ BED_SCENARIO(element_missing_a_part_is_refused) {
                bed::filter_slot(f.record) == f.engine_filter && bed::logged("unreadable"));
 
     // The same side, now present, with one attribute missing.
-    void* buy = bed::make_save_node(bed::save_number("buy"));
-    bed::set_save_attribute(buy, bed::save_number("enabled"), "1");
-    bed::set_save_attribute(buy, bed::save_number("factions"), "argon");
+    void* buy = bed::make_save_node(bed::save_number(prefixed("buy").c_str()));
+    bed::set_save_attribute(buy, bed::save_number(prefixed("enabled").c_str()), "1");
+    bed::set_save_attribute(buy, bed::save_number(prefixed("factions").c_str()), "argon");
     bed::append_save_child(element, buy);
     bed::load_game(saved);
     bed::check("a side missing an attribute is refused", bed::filter_slot(f.record) == f.engine_filter);
 
-    bed::set_save_attribute(buy, bed::save_number("whitelist"), "0");
+    bed::set_save_attribute(buy, bed::save_number(prefixed("whitelist").c_str()), "0");
     bed::load_game(saved);
     bed::check("the complete element is read", bed::filter_slot(f.record) != f.engine_filter);
 }

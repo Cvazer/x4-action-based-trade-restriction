@@ -26,9 +26,13 @@ std::int32_t g_trade_type = -1;
 bool g_runtime_hooked = false;
 std::optional<save::Names> g_names;
 bool g_imported = false;
+bool g_world = false;
 
 std::vector<int> g_hooks;
 std::array<int, 3> g_events = {-1, -1, -1};
+
+constexpr const char* kStashedRules = "rules";
+constexpr const char* kStashedPlayer = "player";
 
 // List ID preserved across `BlacklistFilterBuild` when rebuilding an already-wrapped list.
 thread_local std::int32_t t_rebuilding_list_id = 0;
@@ -126,7 +130,7 @@ void save_sets(game::XmlNode parent) {
     if (!g_names) return;
     std::size_t written = 0;
     for (game::XmlNode node : parent.children()) {
-        if (node.element() != g_names->blacklist.number()) continue;
+        if (node.element() != g_names->blacklist) continue;
         const Rule* rule = g_rules.find(save::list_id(node, *g_names));
         if (!rule || !rule->is_active()) continue;
         if (save::write(node, *rule, *g_names)) {
@@ -147,7 +151,7 @@ void load_sets(game::XmlNode lists) {
     if (!g_names) return;
     std::size_t read = 0;
     for (game::XmlNode node : lists.children()) {
-        if (node.element() != g_names->blacklist.number()) continue;
+        if (node.element() != g_names->blacklist) continue;
         auto rule = save::read(node, *g_names);
         if (!rule) {
             x4n::log::error(
@@ -162,6 +166,35 @@ void load_sets(game::XmlNode lists) {
         ++read;
     }
     x4n::log::info("load: {} list(s) carry sets in the save", read);
+}
+
+// A UI reload unloads the extension and keeps the world, so the sets cross it in X4Native's stash.
+// A world this load has not reached is not this instance's to describe, and leaves the stash as it is.
+// Sets read from a save whose world is not loaded yet are stashed with no player, and belong to that world.
+void stash_rules() {
+    if (!g_world && !g_imported) return;
+    const std::uint64_t player = g_imported ? 0 : game::player_id();
+    x4n::stash::set(kStashedPlayer, player);
+    x4n::stash::set_string(kStashedRules, g_rules.encode().c_str());
+}
+
+void restore_stashed_rules() {
+    std::uint64_t player = 0;
+    const bool stashed = x4n::stash::get(kStashedPlayer, &player);
+    const char* text = x4n::stash::get_string(kStashedRules);
+    const std::string table = text ? text : "";
+    x4n::stash::clear();
+    if (!stashed || (player && player != game::player_id())) return;
+
+    auto rules = parse_table(table);
+    if (!rules) {
+        x4n::log::error("reload: the sets kept across the UI reload are unreadable: {}", rules.error());
+        return;
+    }
+    for (const Rule& rule : *rules) {
+        g_rules.store(rule);
+    }
+    x4n::log::info("reload: {} list(s) carry sets across the UI reload", rules->size());
 }
 
 void install_runtime_hooks() {
@@ -253,8 +286,14 @@ void attach() {
 
 void on_game_loaded() {
     x4n::log::info("game world loaded; attaching the native half");
-    if (!g_imported) clear_rules();
+    if (g_imported) {
+        x4n::stash::clear();
+    } else {
+        clear_rules();
+        restore_stashed_rules();
+    }
     g_imported = false;
+    g_world = true;
     attach();
     wrap_imported_lists();
     x4n::log::info(
@@ -285,6 +324,9 @@ X4N_EXTENSION {
 }
 
 X4N_SHUTDOWN {
+    stash_rules();
+    g_world = false;
+    g_imported = false;
     wrapper::unwrap_all();
     for (int id : g_hooks) {
         x4n::hook::remove(id);

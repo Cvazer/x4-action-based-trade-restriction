@@ -9,9 +9,11 @@ namespace action_based_trade_restriction::operation {
 namespace {
 
 Operation operation_from_action(game::ScriptAction action) {
+    const auto* offsets = x4n::detail::offsets();
+    if (!offsets) return Operation::Unknown;
     const std::uint32_t command = action.command();
-    if (command == X4_SCRIPT_COMMAND_FIND_SELL_OFFER) return Operation::Buy;
-    if (command == X4_SCRIPT_COMMAND_FIND_BUY_OFFER) return Operation::Sell;
+    if (command == offsets->script_command_find_sell_offer) return Operation::Buy;
+    if (command == offsets->script_command_find_buy_offer) return Operation::Sell;
     return Operation::Unknown;
 }
 

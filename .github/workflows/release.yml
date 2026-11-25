@@ -21,7 +21,7 @@ jobs:
       - name: Fetch the X4Native SDK
         shell: pwsh
         env:
-          X4NATIVE_SDK_URL: https://github.com/Cvazer/X4Native/releases/download/v9.0.0-611726-cvazer.1/x4native-sdk-v9.0.0-611726-cvazer.1.zip
+          X4NATIVE_SDK_URL: https://github.com/Cvazer/X4Native/releases/download/v9.0.0-611726-cvazer.2/x4native-sdk-v9.0.0-611726-cvazer.2.zip
         run: |
           $zip = Join-Path $env:RUNNER_TEMP "x4native-sdk.zip"
           $out = Join-Path $env:RUNNER_TEMP "x4native-sdk"
